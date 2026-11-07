@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ChitFund" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">#0F5132</item>
+        <item name="colorPrimaryDark">#0B3D26</item>
+        <item name="colorAccent">#198754</item>
+        <item name="android:statusBarColor">#0F5132</item>
+    </style>
+</resources>

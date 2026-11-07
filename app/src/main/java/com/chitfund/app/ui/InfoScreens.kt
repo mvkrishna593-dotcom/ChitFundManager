@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SimplePage(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
+fun SimplePage(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -53,21 +53,6 @@ private fun InfoCard(title: String, body: String) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(body, style = MaterialTheme.typography.bodyMedium)
         }
-    }
-}
-
-/** Placeholder: the PIN, biometric login and security question come in the next step. */
-@Composable
-fun SettingsScreen(onBack: () -> Unit) {
-    SimplePage("App Settings", onBack) {
-        InfoCard(
-            "Security",
-            "PIN login, fingerprint login and the security question will be added in the next update."
-        )
-        InfoCard(
-            "Backup",
-            "Saving your data to your Google Drive will be added in a later update."
-        )
     }
 }
 
