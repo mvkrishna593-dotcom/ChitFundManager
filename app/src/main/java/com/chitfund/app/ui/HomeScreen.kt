@@ -232,6 +232,8 @@ fun HomeScreen(
                     PillTabs(listOf("Manager", "Member"), tab) { tab = it }
                     if (chits.isEmpty()) {
                         EmptyState(isManager = tab == 0) { onNew(role) }
+                    } else if (tab == 1) {
+                        MemberHome(vm, chits, onOpen)
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(16.dp),

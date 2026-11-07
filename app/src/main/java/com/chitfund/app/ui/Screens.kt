@@ -43,6 +43,10 @@ fun NumField(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewChitScreen(vm: ChitViewModel, role: String, onDone: () -> Unit) {
+    if (role == "PARTICIPANT") {
+        MemberChitForm(vm, onDone)
+        return
+    }
     var name by remember { mutableStateOf("") }
     var members by remember { mutableStateOf("20") }
     var monthly by remember { mutableStateOf("10000") }

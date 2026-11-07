@@ -1,6 +1,7 @@
 package com.chitfund.app
 
 import android.content.Context
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -13,6 +14,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.Update
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 /** role is "ORGANISER" or "PARTICIPANT". myWonMonth is only used for participants. */
@@ -24,7 +27,13 @@ data class Chit(
     val members: Int,
     val monthlyAmount: Double,
     val commissionPercent: Double,
-    val myWonMonth: Int? = null
+    val myWonMonth: Int? = null,
+    @ColumnInfo(defaultValue = "''") val organiserName: String = "",
+    @ColumnInfo(defaultValue = "''") val organiserMobile: String = "",
+    @ColumnInfo(defaultValue = "''") val place: String = "",
+    /** Start and end dates as UTC milliseconds (from the date picker). */
+    val startMillis: Long? = null,
+    val endMillis: Long? = null
 )
 
 @Entity
@@ -123,7 +132,7 @@ abstract class ChitDao {
 
 @Database(
     entities = [Chit::class, Member::class, Auction::class, Payment::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDb : RoomDatabase() {
@@ -132,8 +141,19 @@ abstract class AppDb : RoomDatabase() {
     companion object {
         @Volatile private var inst: AppDb? = null
 
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE Chit ADD COLUMN organiserName TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE Chit ADD COLUMN organiserMobile TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE Chit ADD COLUMN place TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE Chit ADD COLUMN startMillis INTEGER")
+                db.execSQL("ALTER TABLE Chit ADD COLUMN endMillis INTEGER")
+            }
+        }
+
         fun get(ctx: Context): AppDb = inst ?: synchronized(this) {
             inst ?: Room.databaseBuilder(ctx.applicationContext, AppDb::class.java, "chit.db")
+                .addMigrations(MIGRATION_1_2)
                 .build().also { inst = it }
         }
     }
