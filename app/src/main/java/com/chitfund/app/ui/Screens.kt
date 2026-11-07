@@ -42,57 +42,6 @@ fun NumField(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(vm: ChitViewModel, onOpen: (Long) -> Unit, onNew: (String) -> Unit) {
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    val role = if (tab == 0) "ORGANISER" else "PARTICIPANT"
-    val chits by vm.chits(role).collectAsState(emptyList())
-    var manualCheck by remember { mutableIntStateOf(0) }
-    UpdateHost(manualCheck)
-
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = { Text("Chit Fund Manager", fontWeight = FontWeight.Bold) },
-                actions = { HeaderButton("Update") { manualCheck++ } },
-                colors = headerColors()
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(onClick = { onNew(role) }) { Text("+ New chit") }
-        }
-    ) { pad ->
-        Column(Modifier.padding(pad)) {
-            PillTabs(listOf("I run a chit", "I'm a member"), tab) { tab = it }
-            if (chits.isEmpty()) {
-                Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        if (tab == 0) "No chits yet. Tap “+ New chit” to manage members, auctions and payments."
-                        else "No chits yet. Tap “+ New chit” to see what interest rate you get."
-                    )
-                }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(chits, key = { it.id }) { c ->
-                        Card(Modifier.fillMaxWidth().clickable { onOpen(c.id) }) {
-                            Column(Modifier.padding(16.dp)) {
-                                Text(c.name, style = MaterialTheme.typography.titleMedium)
-                                Text("${c.members} members · ${money(c.monthlyAmount)}/month · ${pct(c.commissionPercent)} commission")
-                                Text("Chit value ${money(c.members * c.monthlyAmount)}", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 fun NewChitScreen(vm: ChitViewModel, role: String, onDone: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var members by remember { mutableStateOf("20") }
