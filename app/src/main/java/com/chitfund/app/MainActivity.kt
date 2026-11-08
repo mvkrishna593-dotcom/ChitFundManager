@@ -31,7 +31,7 @@ class MainActivity : FragmentActivity() {
                     primary = Color(0xFF0F5132),
                     onPrimary = Color.White,
                     secondary = Color(0xFF198754),
-                    background = Color(0xFFF3F6F4),
+                    background = Color(0xFFE6F2EA),
                     surface = Color.White,
                     surfaceVariant = Color(0xFFDCE6E0),
                     onSurfaceVariant = Color(0xFF34423A),

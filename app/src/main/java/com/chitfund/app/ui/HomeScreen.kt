@@ -210,7 +210,13 @@ fun HomeScreen(
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 TopAppBar(
-                    title = { Text("Home", fontWeight = FontWeight.Bold) },
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Home, null, modifier = Modifier.size(26.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Text("CHIT FUND MANAGER", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        }
+                    },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(Icons.Filled.Menu, "Menu")

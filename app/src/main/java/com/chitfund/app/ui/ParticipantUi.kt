@@ -34,7 +34,7 @@ private val Red = Color(0xFFC62828)
 private fun statusOf(chit: Chit, month: Int, hasBid: Boolean, paid: Boolean): String = when {
     paid -> "Paid"
     !hasBid -> "Bid pending"
-    month <= Dates.currentMonth(chit) && chit.startMillis != null && Dates.elapsed(chit) >= month -> "Due"
+    chit.startMillis != null && Dates.elapsed(chit) >= month -> "Due"
     else -> "Upcoming"
 }
 
@@ -100,7 +100,10 @@ fun MemberHome(vm: ChitViewModel, chits: List<Chit>, onOpen: (Long) -> Unit) {
             )
         }
         items(numbered, key = { it.first.id }) { (c, no) ->
-            Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable { onOpen(c.id) }) {
+            Card(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable { onOpen(c.id) },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Chit $no · ${c.name}", style = MaterialTheme.typography.titleMedium)
                     Text(
@@ -123,7 +126,7 @@ fun MemberHome(vm: ChitViewModel, chits: List<Chit>, onOpen: (Long) -> Unit) {
 private fun ChitSlide(vm: ChitViewModel, c: Chit, number: Int, onClick: () -> Unit) {
     val auctions by vm.auctions(c.id).collectAsState(emptyList())
     val payments by vm.payments(c.id).collectAsState(emptyList())
-    val month = Dates.currentMonth(c)
+    val month = Dates.running(c, auctions.map { it.monthNo })
     val bid = auctions.find { it.monthNo == month }?.bid
     val paid = payments.any { it.monthNo == month && it.paid }
     val pay = bid?.let { ChitMath.installment(c.monthlyAmount, c.members, it) }
@@ -134,12 +137,13 @@ private fun ChitSlide(vm: ChitViewModel, c: Chit, number: Int, onClick: () -> Un
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF0F5132), Color(0xFF198754))))
+            .background(Brush.linearGradient(listOf(Color(0xFF2E8B5E), Color(0xFF52B788))))
             .clickable(onClick = onClick)
             .padding(18.dp)
     ) {
         Column(Modifier.align(Alignment.CenterStart)) {
-            Text("$dateText  ·  Chit $number", color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
+            Text("$dateText  ·  ${c.name}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("Month $month/${c.members}", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
             Spacer(Modifier.height(10.dp))
             Text("Bid amount", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
             Text(
@@ -172,8 +176,7 @@ fun ParticipantContent(vm: ChitViewModel, chit: Chit) {
 
     val n = chit.members
     val value = ChitMath.chitValue(chit)
-    val elapsed = Dates.elapsed(chit)
-    val remaining = if (chit.startMillis == null) n else n - elapsed
+    val remaining = if (bids.isEmpty()) n - Dates.elapsed(chit) else n - Dates.running(chit, bids.keys)
     val profits = (1..n).map { m -> bids[m]?.let { it / n } }
     val maxProfit = profits.filterNotNull().maxOrNull() ?: 0.0
     val maxGain = bids.values.maxOfOrNull { ChitMath.gainPercent(chit.monthlyAmount, n, it) } ?: 0.0

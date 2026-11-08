@@ -63,7 +63,7 @@ fun NewChitScreen(vm: ChitViewModel, role: String, onDone: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text(if (role == "ORGANISER") "New chit (organiser)" else "New chit (member)", fontWeight = FontWeight.Bold) },
-                navigationIcon = { HeaderButton("Back", onDone) },
+                navigationIcon = { BackIcon(onDone) },
                 colors = headerColors()
             )
         }
@@ -112,7 +112,7 @@ fun ChitScreen(vm: ChitViewModel, id: Long, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text(c?.name ?: "", fontWeight = FontWeight.Bold) },
-                navigationIcon = { HeaderButton("Back", onBack) },
+                navigationIcon = { BackIcon(onBack) },
                 actions = { HeaderButton("Delete") { confirm = true } },
                 colors = headerColors()
             )

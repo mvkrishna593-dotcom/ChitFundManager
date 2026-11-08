@@ -55,7 +55,7 @@ fun MemberChitForm(vm: ChitViewModel, onDone: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Add chit", fontWeight = FontWeight.Bold) },
-                navigationIcon = { HeaderButton("Back", onDone) },
+                navigationIcon = { BackIcon(onDone) },
                 colors = headerColors()
             )
         }

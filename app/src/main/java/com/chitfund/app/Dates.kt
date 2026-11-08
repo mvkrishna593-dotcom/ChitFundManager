@@ -45,4 +45,8 @@ object Dates {
     fun currentMonth(c: Chit): Int = elapsed(c).coerceAtLeast(1)
 
     fun monthDate(c: Chit, month: Int): Long? = c.startMillis?.let { addMonths(it, month - 1) }
+
+    /** Running month: the last month that has a bid entered, else the month by date. */
+    fun running(c: Chit, bidMonths: Collection<Int>): Int =
+        (bidMonths.maxOrNull() ?: currentMonth(c)).coerceIn(1, c.members)
 }
