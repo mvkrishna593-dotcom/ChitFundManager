@@ -23,14 +23,15 @@ import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -84,7 +85,9 @@ fun HomeScreen(
     profileVm: ProfileViewModel,
     onOpen: (Long) -> Unit,
     onNew: (String) -> Unit,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
+    dark: Boolean,
+    onToggleTheme: () -> Unit
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -121,9 +124,9 @@ fun HomeScreen(
     BackHandler(enabled = drawerState.isOpen) { closeDrawer() }
 
     val itemColors = NavigationDrawerItemDefaults.colors(
-        selectedContainerColor = Color(0xFFE3F1E8),
-        selectedTextColor = Green,
-        selectedIconColor = Green
+        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        selectedTextColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer
     )
     val itemPad = NavigationDrawerItemDefaults.ItemPadding
 
@@ -222,12 +225,24 @@ fun HomeScreen(
                             Icon(Icons.Filled.Menu, "Menu")
                         }
                     },
+                    actions = {
+                        IconButton(onClick = onToggleTheme) {
+                            Icon(
+                                if (dark) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                                if (dark) "Switch to light theme" else "Switch to dark theme"
+                            )
+                        }
+                    },
                     colors = headerColors()
                 )
             },
             floatingActionButton = {
                 if (tab >= 0 && chits.isNotEmpty()) {
-                    ExtendedFloatingActionButton(onClick = { onNew(role) }) {
+                    ExtendedFloatingActionButton(
+                        onClick = { onNew(role) },
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ) {
                         Text(if (tab == 0) "+ New chit" else "+ Add chit")
                     }
                 }

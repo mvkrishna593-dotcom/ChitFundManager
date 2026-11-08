@@ -124,6 +124,26 @@ abstract class ChitDao {
     @Query("DELETE FROM Chit WHERE id = :id")
     abstract suspend fun deleteChitRow(id: Long)
 
+    // ---- whole-database access for Google Drive backup / restore
+    @Query("SELECT * FROM Chit") abstract suspend fun allChits(): List<Chit>
+    @Query("SELECT * FROM Member") abstract suspend fun allMembers(): List<Member>
+    @Query("SELECT * FROM Auction") abstract suspend fun allAuctions(): List<Auction>
+    @Query("SELECT * FROM Payment") abstract suspend fun allPayments(): List<Payment>
+    @Query("DELETE FROM Chit") abstract suspend fun clearChits()
+    @Query("DELETE FROM Member") abstract suspend fun clearMembers()
+    @Query("DELETE FROM Auction") abstract suspend fun clearAuctions()
+    @Query("DELETE FROM Payment") abstract suspend fun clearPayments()
+    @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putChits(l: List<Chit>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putMembers(l: List<Member>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putAuctions(l: List<Auction>)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun putPayments(l: List<Payment>)
+
+    @Transaction
+    open suspend fun replaceAll(c: List<Chit>, m: List<Member>, a: List<Auction>, p: List<Payment>) {
+        clearPayments(); clearAuctions(); clearMembers(); clearChits()
+        putChits(c); putMembers(m); putAuctions(a); putPayments(p)
+    }
+
     @Transaction
     open suspend fun deleteChitFully(id: Long) {
         deletePaymentsOf(id)

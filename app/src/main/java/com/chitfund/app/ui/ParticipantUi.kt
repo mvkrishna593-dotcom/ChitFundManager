@@ -20,6 +20,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -131,33 +132,36 @@ private fun ChitSlide(vm: ChitViewModel, c: Chit, number: Int, onClick: () -> Un
     val paid = payments.any { it.monthNo == month && it.paid }
     val pay = bid?.let { ChitMath.installment(c.monthlyAmount, c.members, it) }
     val status = statusOf(c, month, bid != null, paid)
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val ink = if (dark) Color.White else Color(0xFF0F3D28)
+    val gradient = if (dark) listOf(Color(0xFF1F5C42), Color(0xFF2C7A57)) else listOf(Color(0xFFA7D3BC), Color(0xFF8FC4A9))
     val dateText = Dates.monthDate(c, month)?.let { Dates.monthYear(it) } ?: "Month $month"
 
     Box(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF2E8B5E), Color(0xFF52B788))))
+            .background(Brush.linearGradient(gradient))
             .clickable(onClick = onClick)
             .padding(18.dp)
     ) {
         Column(Modifier.align(Alignment.CenterStart)) {
-            Text("$dateText  ·  ${c.name}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            Text("Month $month/${c.members}", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp)
+            Text("$dateText  ·  ${c.name}", color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("Month $month/${c.members}", color = ink.copy(alpha = 0.85f), fontSize = 12.sp)
             Spacer(Modifier.height(10.dp))
-            Text("Bid amount", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+            Text("Bid amount", color = ink.copy(alpha = 0.75f), fontSize = 12.sp)
             Text(
                 bid?.let { money(it) } ?: "Not entered",
-                color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold
+                color = ink, fontSize = 22.sp, fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 if (paid) "Amount paid" else "Amount to pay",
-                color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp
+                color = ink.copy(alpha = 0.75f), fontSize = 12.sp
             )
             Text(
                 pay?.let { money(it) } ?: "—",
-                color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold
+                color = ink, fontSize = 22.sp, fontWeight = FontWeight.Bold
             )
         }
         Box(Modifier.align(Alignment.TopEnd)) { StatusPill(status) }

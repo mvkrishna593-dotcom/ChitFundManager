@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -110,3 +113,11 @@ fun GainChip(percent: Double, maxPercent: Double) {
         }
     }
 }
+
+/** Every card in the app is the soft mint colour (same as the My chits cards). */
+@Composable
+fun Card(
+    modifier: Modifier = Modifier,
+    colors: CardColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    content: @Composable ColumnScope.() -> Unit
+) = androidx.compose.material3.Card(modifier = modifier, colors = colors, content = content)

@@ -26,6 +26,7 @@ fun SettingsScreen(
     val bioOn by vm.biometricOn.collectAsState()
     val hasPin by vm.hasPin.collectAsState()
     val bioAvailable = Biometrics.available(ctx)
+    val backupVm: com.chitfund.app.BackupViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     var verify by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     SimplePage("App Settings", onBack) {
@@ -77,15 +78,7 @@ fun SettingsScreen(
             }
         }
 
-        Card(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-            Column(Modifier.padding(16.dp)) {
-                Text("Backup", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Saving your data to your Google Drive will be added in a later update.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
+        BackupCard(backupVm)
     }
 
     verify?.let { action ->
