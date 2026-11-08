@@ -155,7 +155,12 @@ fun MessagesTab(chit: Chit, members: List<Member>, auctions: List<Auction>, paym
     val ctx = LocalContext.current
     var month by rememberSaveable { mutableIntStateOf(Dates.running(chit, auctions.map { it.monthNo })) }
     var unpaidOnly by rememberSaveable { mutableStateOf(false) }
-    var sent by remember { mutableStateOf(setOf<Long>()) }
+    val prefs = remember { ctx.getSharedPreferences("sent_marks", Context.MODE_PRIVATE) }
+    val markKey = "${chit.id}_${month}_${if (unpaidOnly) "rem" else "first"}"
+    var marks by remember { mutableIntStateOf(0) }
+    val sent: Set<Long> = remember(markKey, marks) {
+        prefs.getStringSet(markKey, emptySet())!!.mapNotNull { it.toLongOrNull() }.toSet()
+    }
 
     val auction = auctions.find { it.monthNo == month }
     val due = auction?.let { ChitMath.installment(chit.monthlyAmount, chit.members, it.bid) }
@@ -165,9 +170,9 @@ fun MessagesTab(chit: Chit, members: List<Member>, auctions: List<Auction>, paym
 
     Column(Modifier.padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-            TextButton(enabled = month > 1, onClick = { month--; sent = emptySet() }) { Text("◀ Prev") }
+            TextButton(enabled = month > 1, onClick = { month-- }) { Text("◀ Prev") }
             Text("Month $month", style = MaterialTheme.typography.titleMedium)
-            TextButton(enabled = month < chit.members, onClick = { month++; sent = emptySet() }) { Text("Next ▶") }
+            TextButton(enabled = month < chit.members, onClick = { month++ }) { Text("Next ▶") }
         }
         if (auction == null || due == null) {
             Text(
@@ -197,7 +202,7 @@ fun MessagesTab(chit: Chit, members: List<Member>, auctions: List<Auction>, paym
                                 if (m.phone.isBlank()) "No WhatsApp number" else m.phone,
                                 style = MaterialTheme.typography.bodySmall
                             )
-                            if (m.id in sent) Text("Opened in WhatsApp ✓", style = MaterialTheme.typography.bodySmall)
+                            if (m.id in sent) Text("Message sent ✓", style = MaterialTheme.typography.bodySmall)
                         }
                         Button(
                             enabled = m.phone.isNotBlank(),
@@ -207,7 +212,10 @@ fun MessagesTab(chit: Chit, members: List<Member>, auctions: List<Auction>, paym
                                 } else {
                                     "Hello ${m.name}, ${chit.name} chit, $monthText auction is done (bid ${money(auction.bid)}). Your amount to pay this month is ${money(due)}. Please pay within this week. Thank you."
                                 }
-                                sent = sent + m.id
+                                prefs.edit()
+                                    .putStringSet(markKey, (sent + m.id).map { it.toString() }.toSet())
+                                    .apply()
+                                marks++
                                 openWhatsApp(ctx, m.phone, text)
                             }
                         ) { Text("Send") }

@@ -232,6 +232,40 @@ fun ParticipantContent(vm: ChitViewModel, chit: Chit) {
         }
 
         item {
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            OutlinedButton(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    var paidTotal = 0.0
+                    var dueTotal = 0.0
+                    val rows = (1..n).filter { it in bids }.map { mo ->
+                        val due = ChitMath.installment(chit.monthlyAmount, n, bids.getValue(mo))
+                        dueTotal += due
+                        if (mo in paidMonths) paidTotal += due
+                        StatementRow(
+                            "Month $mo",
+                            Dates.monthDate(chit, mo)?.let { Dates.format(it) } ?: "-",
+                            money(bids.getValue(mo)),
+                            money(due),
+                            if (mo in paidMonths) "Paid " + (paidOn[mo]?.let { Dates.format(it) } ?: "") else "Pending"
+                        )
+                    }
+                    val f = PdfStatement.create(
+                        ctx, "${chit.name}_statement", "Chit statement",
+                        listOf(
+                            "Chit: ${chit.name}   (${n} months x ${money(chit.monthlyAmount)} = ${money(value)})",
+                            "Organiser: ${chit.organiserName}" + if (chit.place.isNotBlank()) ", ${chit.place}" else "",
+                            "Date: ${Dates.format(Dates.todayUtc())}"
+                        ),
+                        rows,
+                        listOf("Paid so far: ${money(paidTotal)}", "Pending: ${money(dueTotal - paidTotal)}")
+                    )
+                    PdfStatement.share(ctx, f, "${chit.name} statement")
+                }
+            ) { Text("Share PDF statement") }
+        }
+
+        item {
             Text("Every month", style = MaterialTheme.typography.titleMedium)
             Text("Tap a month to enter the bid or mark it paid.", style = MaterialTheme.typography.bodySmall)
         }

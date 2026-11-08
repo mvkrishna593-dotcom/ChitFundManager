@@ -31,12 +31,15 @@ class MainActivity : FragmentActivity() {
                     primary = Color(0xFF0F5132),
                     onPrimary = Color.White,
                     secondary = Color(0xFF198754),
-                    background = Color(0xFFE6F2EA),
-                    surface = Color.White,
-                    surfaceVariant = Color(0xFFDCE6E0),
+                    background = Color(0xFFDCEBE1),
+                    surface = Color(0xFFEAF3ED),
+                    surfaceVariant = Color(0xFFC6DCCE),
                     onSurfaceVariant = Color(0xFF34423A),
-                    surfaceContainerHighest = Color.White,
-                    secondaryContainer = Color(0xFFE3F1E8),
+                    surfaceContainerHighest = Color(0xFFEAF3ED),
+                    surfaceContainerHigh = Color(0xFFEAF3ED),
+                    surfaceContainer = Color(0xFFE4EFE8),
+                    surfaceContainerLow = Color(0xFFE4EFE8),
+                    secondaryContainer = Color(0xFFC6DCCE),
                     onSecondaryContainer = Color(0xFF0F5132)
                 )
             ) {

@@ -25,7 +25,7 @@ fun OrganiserContent(vm: ChitViewModel, chit: Chit) {
     Column {
         PillTabs(listOf("Members", "Auctions", "Payments", "Messages"), tab) { tab = it }
         when (tab) {
-            0 -> MembersTab(vm, chit, members)
+            0 -> MembersTab(vm, chit, members, auctions, payments)
             1 -> AuctionsTab(vm, chit, members, auctions)
             2 -> PaymentsTab(vm, chit, members, auctions, payments)
             else -> MessagesTab(chit, members, auctions, payments)
@@ -34,7 +34,14 @@ fun OrganiserContent(vm: ChitViewModel, chit: Chit) {
 }
 
 @Composable
-private fun MembersTab(vm: ChitViewModel, chit: Chit, members: List<Member>) {
+private fun MembersTab(
+    vm: ChitViewModel,
+    chit: Chit,
+    members: List<Member>,
+    auctions: List<Auction>,
+    payments: List<Payment>
+) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
     var show by remember { mutableStateOf(false) }
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -54,7 +61,13 @@ private fun MembersTab(vm: ChitViewModel, chit: Chit, members: List<Member>) {
                         val sub = listOf(m.phone, m.place).filter { it.isNotBlank() }.joinToString(" · ")
                         if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall)
                     }
-                    TextButton(onClick = { vm.removeMember(m) }) { Text("Remove") }
+                    Column(horizontalAlignment = Alignment.End) {
+                        TextButton(onClick = {
+                            val f = memberStatement(ctx, chit, m, auctions, payments)
+                            PdfStatement.share(ctx, f, "${chit.name} statement - ${m.name}")
+                        }) { Text("Statement") }
+                        TextButton(onClick = { vm.removeMember(m) }) { Text("Remove") }
+                    }
                 }
             }
         }
@@ -270,4 +283,42 @@ private fun PaymentsTab(
             datingFor = null
         }
     }
+}
+
+/** PDF for one member of a chit the manager runs. */
+private fun memberStatement(
+    ctx: android.content.Context,
+    chit: Chit,
+    m: Member,
+    auctions: List<Auction>,
+    payments: List<Payment>
+): java.io.File {
+    val bids = auctions.associate { it.monthNo to it.bid }
+    val mine = payments.filter { it.memberId == m.id && it.paid }.associateBy { it.monthNo }
+    var paidTotal = 0.0
+    var dueTotal = 0.0
+    val rows = (1..chit.members).filter { it in bids }.map { mo ->
+        val due = ChitMath.installment(chit.monthlyAmount, chit.members, bids.getValue(mo))
+        val p = mine[mo]
+        dueTotal += due
+        if (p != null) paidTotal += due
+        StatementRow(
+            "Month $mo",
+            Dates.monthDate(chit, mo)?.let { Dates.format(it) } ?: "-",
+            money(bids.getValue(mo)),
+            money(due),
+            if (p != null) "Paid " + (p.paidMillis?.let { Dates.format(it) } ?: "") else "Pending"
+        )
+    }
+    return PdfStatement.create(
+        ctx, "${chit.name}_${m.name}",
+        "Chit statement",
+        listOf(
+            "Chit: ${chit.name}   (${chit.members} chits x ${money(chit.monthlyAmount)} = ${money(ChitMath.chitValue(chit))})",
+            "Member: ${m.name}" + if (m.place.isNotBlank()) ", ${m.place}" else "",
+            "Date: ${Dates.format(Dates.todayUtc())}"
+        ),
+        rows,
+        listOf("Paid so far: ${money(paidTotal)}", "Pending: ${money(dueTotal - paidTotal)}")
+    )
 }
