@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.chitfund.app.*
 
 /** Form the manager fills to create a chit he runs. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManagerChitForm(vm: ChitViewModel, onDone: () -> Unit) {
     var name by remember { mutableStateOf("") }
