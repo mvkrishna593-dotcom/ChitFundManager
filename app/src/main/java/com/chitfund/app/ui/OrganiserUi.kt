@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -21,11 +23,12 @@ fun OrganiserContent(vm: ChitViewModel, chit: Chit) {
     val payments by vm.payments(chit.id).collectAsState(emptyList())
 
     Column {
-        PillTabs(listOf("Members", "Auctions", "Payments"), tab) { tab = it }
+        PillTabs(listOf("Members", "Auctions", "Payments", "Messages"), tab) { tab = it }
         when (tab) {
             0 -> MembersTab(vm, chit, members)
             1 -> AuctionsTab(vm, chit, members, auctions)
-            else -> PaymentsTab(vm, chit, members, auctions, payments)
+            2 -> PaymentsTab(vm, chit, members, auctions, payments)
+            else -> MessagesTab(chit, members, auctions, payments)
         }
     }
 }
@@ -48,7 +51,8 @@ private fun MembersTab(vm: ChitViewModel, chit: Chit, members: List<Member>) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(m.name, fontWeight = FontWeight.Medium)
-                        if (m.phone.isNotBlank()) Text(m.phone, style = MaterialTheme.typography.bodySmall)
+                        val sub = listOf(m.phone, m.place).filter { it.isNotBlank() }.joinToString(" · ")
+                        if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall)
                     }
                     TextButton(onClick = { vm.removeMember(m) }) { Text("Remove") }
                 }
@@ -56,25 +60,33 @@ private fun MembersTab(vm: ChitViewModel, chit: Chit, members: List<Member>) {
         }
     }
     if (show) {
-        MemberDialog(onDismiss = { show = false }) { n, p -> vm.addMember(chit.id, n, p); show = false }
+        MemberDialog(onDismiss = { show = false }) { n, p, pl -> vm.addMember(chit.id, n, p, pl); show = false }
     }
 }
 
 @Composable
-private fun MemberDialog(onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
+private fun MemberDialog(onDismiss: () -> Unit, onSave: (String, String, String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
+    var place by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add member") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true)
-                OutlinedTextField(phone, { phone = it }, label = { Text("Phone (optional)") }, singleLine = true)
+                OutlinedTextField(
+                    phone,
+                    { v -> if (v.length <= 15 && v.all { it.isDigit() || it == '+' }) phone = v },
+                    label = { Text("WhatsApp number") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                )
+                OutlinedTextField(place, { place = it }, label = { Text("Place") }, singleLine = true)
             }
         },
         confirmButton = {
-            TextButton(enabled = name.isNotBlank(), onClick = { onSave(name.trim(), phone.trim()) }) { Text("Save") }
+            TextButton(enabled = name.isNotBlank(), onClick = { onSave(name.trim(), phone.trim(), place.trim()) }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
@@ -209,6 +221,8 @@ private fun PaymentsTab(
     val auction = auctions.find { it.monthNo == month }
     val due = ChitMath.installment(chit.monthlyAmount, chit.members, auction?.bid ?: 0.0)
     val paidSet = payments.filter { it.monthNo == month && it.paid }.map { it.memberId }.toSet()
+    val paidDates = payments.filter { it.monthNo == month && it.paid }.associate { it.memberId to it.paidMillis }
+    var datingFor by remember { mutableStateOf<Member?>(null) }
     val paidCount = members.count { it.id in paidSet }
 
     Column(Modifier.padding(16.dp)) {
@@ -231,13 +245,29 @@ private fun PaymentsTab(
             items(members, key = { it.id }) { m ->
                 val paid = m.id in paidSet
                 Row(
-                    Modifier.fillMaxWidth().clickable { vm.setPaid(chit.id, m.id, month, !paid) },
+                    Modifier.fillMaxWidth().clickable {
+                        if (paid) vm.setPaid(chit.id, m.id, month, false) else datingFor = m
+                    },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Checkbox(checked = paid, onCheckedChange = { vm.setPaid(chit.id, m.id, month, it) })
-                    Text(m.name)
+                    Checkbox(
+                        checked = paid,
+                        onCheckedChange = { if (paid) vm.setPaid(chit.id, m.id, month, false) else datingFor = m }
+                    )
+                    Column {
+                        Text(m.name)
+                        paidDates[m.id]?.let {
+                            Text("Paid on ${Dates.format(it)}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                 }
             }
+        }
+    }
+    datingFor?.let { m ->
+        DatePickDialog(Dates.todayUtc(), { datingFor = null }) { d ->
+            vm.setPaid(chit.id, m.id, month, true, d)
+            datingFor = null
         }
     }
 }

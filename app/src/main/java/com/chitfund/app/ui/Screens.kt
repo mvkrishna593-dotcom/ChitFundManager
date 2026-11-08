@@ -47,6 +47,10 @@ fun NewChitScreen(vm: ChitViewModel, role: String, onDone: () -> Unit) {
         MemberChitForm(vm, onDone)
         return
     }
+    if (role == "ORGANISER") {
+        ManagerChitForm(vm, onDone)
+        return
+    }
     var name by remember { mutableStateOf("") }
     var members by remember { mutableStateOf("20") }
     var monthly by remember { mutableStateOf("10000") }

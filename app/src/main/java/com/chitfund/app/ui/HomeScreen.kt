@@ -245,7 +245,7 @@ fun HomeScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(chits, key = { it.id }) { c -> ChitCard(c) { onOpen(c.id) } }
+                            items(chits, key = { it.id }) { c -> ManagerChitCard(vm, c) { onOpen(c.id) } }
                         }
                     }
                 }

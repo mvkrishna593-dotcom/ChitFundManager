@@ -170,6 +170,7 @@ fun ParticipantContent(vm: ChitViewModel, chit: Chit) {
     val payments by vm.payments(chit.id).collectAsState(emptyList())
     val bids = auctions.associate { it.monthNo to it.bid }
     val paidMonths = payments.filter { it.paid }.map { it.monthNo }.toSet()
+    val paidOn = payments.filter { it.paid }.associate { it.monthNo to it.paidMillis }
     var editMonth by remember { mutableStateOf<Int?>(null) }
     var editWin by remember { mutableStateOf(false) }
     var showInterest by remember { mutableStateOf(false) }
@@ -256,6 +257,9 @@ fun ParticipantContent(vm: ChitViewModel, chit: Chit) {
                                     money(ChitMath.installment(chit.monthlyAmount, n, bid)),
                                 fontWeight = FontWeight.Bold
                             )
+                            paidOn[m]?.let {
+                                if (paid) Text("Paid on ${Dates.format(it)}", style = MaterialTheme.typography.bodySmall)
+                            }
                             Text("Profit ${money(bid / n)}", style = MaterialTheme.typography.bodySmall)
                         } else {
                             Text("Bid not entered", style = MaterialTheme.typography.bodySmall)
@@ -274,15 +278,16 @@ fun ParticipantContent(vm: ChitViewModel, chit: Chit) {
             month = m,
             existing = bids[m],
             paid = m in paidMonths,
+            paidMillis = paidOn[m],
             onDismiss = { editMonth = null },
-            onSave = { b, paid ->
+            onSave = { b, paid, paidDate ->
                 if (b == null) {
                     vm.deleteAuction(chit.id, m)
                 } else {
                     val existingId = auctions.find { it.monthNo == m }?.id ?: 0L
                     vm.saveAuction(Auction(id = existingId, chitId = chit.id, monthNo = m, bid = b.coerceIn(0.0, value)))
                 }
-                vm.setPaid(chit.id, 0L, m, paid)
+                vm.setPaid(chit.id, 0L, m, paid, paidDate)
                 editMonth = null
             }
         )
@@ -361,9 +366,12 @@ private fun MonthDialog(
     month: Int,
     existing: Double?,
     paid: Boolean,
+    paidMillis: Long?,
     onDismiss: () -> Unit,
-    onSave: (Double?, Boolean) -> Unit
+    onSave: (Double?, Boolean, Long?) -> Unit
 ) {
+    var paidOn by remember { mutableStateOf(paidMillis ?: Dates.todayUtc()) }
+    var pick by remember { mutableStateOf(false) }
     var bid by remember { mutableStateOf(existing?.toLong()?.toString() ?: "") }
     var isPaid by remember { mutableStateOf(paid) }
     AlertDialog(
@@ -376,16 +384,22 @@ private fun MonthDialog(
                     Checkbox(checked = isPaid, onCheckedChange = { isPaid = it })
                     Text("I have paid this month")
                 }
+                if (isPaid) {
+                    OutlinedButton(onClick = { pick = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Paid on: ${Dates.format(paidOn)}")
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(
                 enabled = bid.isBlank() || bid.toDoubleOrNull() != null,
-                onClick = { onSave(bid.toDoubleOrNull(), isPaid) }
+                onClick = { onSave(bid.toDoubleOrNull(), isPaid, if (isPaid) paidOn else null) }
             ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
+    if (pick) DatePickDialog(paidOn, { pick = false }) { paidOn = it; pick = false }
 }
 
 @Composable

@@ -143,7 +143,7 @@ fun MemberChitForm(vm: ChitViewModel, onDone: () -> Unit) {
 private fun abs(d: Double) = if (d < 0) -d else d
 
 @Composable
-private fun Field(label: String, value: String, onChange: (String) -> Unit) {
+fun Field(label: String, value: String, onChange: (String) -> Unit) {
     OutlinedTextField(
         value = value, onValueChange = onChange, label = { Text(label) },
         singleLine = true, modifier = Modifier.fillMaxWidth()
@@ -151,7 +151,7 @@ private fun Field(label: String, value: String, onChange: (String) -> Unit) {
 }
 
 @Composable
-private fun DateButton(label: String, value: Long?, onClick: () -> Unit) {
+fun DateButton(label: String, value: Long?, onClick: () -> Unit) {
     OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Text("$label: " + (value?.let { Dates.format(it) } ?: "choose date"))
     }

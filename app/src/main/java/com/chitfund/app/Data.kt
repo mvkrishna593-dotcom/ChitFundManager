@@ -41,7 +41,8 @@ data class Member(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val chitId: Long,
     val name: String,
-    val phone: String
+    val phone: String,
+    @ColumnInfo(defaultValue = "''") val place: String = ""
 )
 
 @Entity(indices = [Index(value = ["chitId", "monthNo"], unique = true)])
@@ -59,7 +60,9 @@ data class Payment(
     val chitId: Long,
     val memberId: Long,
     val monthNo: Int,
-    val paid: Boolean
+    val paid: Boolean,
+    /** Date the amount was paid, as UTC milliseconds. */
+    val paidMillis: Long? = null
 )
 
 @Dao
@@ -132,7 +135,7 @@ abstract class ChitDao {
 
 @Database(
     entities = [Chit::class, Member::class, Auction::class, Payment::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDb : RoomDatabase() {
@@ -140,6 +143,13 @@ abstract class AppDb : RoomDatabase() {
 
     companion object {
         @Volatile private var inst: AppDb? = null
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE Member ADD COLUMN place TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE Payment ADD COLUMN paidMillis INTEGER")
+            }
+        }
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -153,7 +163,7 @@ abstract class AppDb : RoomDatabase() {
 
         fun get(ctx: Context): AppDb = inst ?: synchronized(this) {
             inst ?: Room.databaseBuilder(ctx.applicationContext, AppDb::class.java, "chit.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build().also { inst = it }
         }
     }
