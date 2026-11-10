@@ -56,7 +56,8 @@ private fun StatusPill(status: String, onDark: Boolean = false) {
 
 /** Member tab on Home: swipeable slides on top, the chit list below. */
 @Composable
-fun MemberHome(vm: ChitViewModel, chits: List<Chit>, onOpen: (Long) -> Unit) {
+fun MemberHome(vm: ChitViewModel, chits: List<Chit>, onOpen: (Long) -> Unit, onEdit: (Long) -> Unit) {
+    var deleting by remember { mutableStateOf<Chit?>(null) }
     // chits come newest first; chit numbers follow the order they were added
     val numbered = chits.mapIndexed { i, c -> c to (chits.size - i) }.sortedBy { it.second }
     val pager = rememberPagerState { numbered.size }
@@ -101,25 +102,28 @@ fun MemberHome(vm: ChitViewModel, chits: List<Chit>, onOpen: (Long) -> Unit) {
             )
         }
         items(numbered, key = { it.first.id }) { (c, no) ->
-            Card(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable { onOpen(c.id) },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Chit $no · ${c.name}", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "${money(c.members * c.monthlyAmount)} · ${money(c.monthlyAmount)}/month · ${c.members} months",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    if (c.organiserName.isNotBlank()) {
+            Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable { onOpen(c.id) }) {
+                Row(Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Chit $no · ${c.name}", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "Organiser: ${c.organiserName}" + if (c.place.isNotBlank()) " · ${c.place}" else "",
-                            style = MaterialTheme.typography.bodySmall
+                            "${money(c.members * c.monthlyAmount)} · ${money(c.monthlyAmount)}/month · ${c.members} months",
+                            style = MaterialTheme.typography.bodyMedium
                         )
+                        if (c.organiserName.isNotBlank()) {
+                            Text(
+                                "Organiser: ${c.organiserName}" + if (c.place.isNotBlank()) " · ${c.place}" else "",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
+                    CardActions({ onEdit(c.id) }) { deleting = c }
                 }
             }
         }
+    }
+    deleting?.let { c ->
+        ConfirmDeleteDialog(c.name, { vm.deleteChit(c.id); deleting = null }, { deleting = null })
     }
 }
 
@@ -168,6 +172,28 @@ private fun ChitSlide(vm: ChitViewModel, c: Chit, number: Int, onClick: () -> Un
     }
 }
 
+/** Lines that sum up the whole chit for the member who has taken it. Null if no win month is set. */
+private fun resultLines(chit: Chit, bids: Map<Int, Double>): List<String>? {
+    val win = chit.myWonMonth ?: return null
+    val n = chit.members
+    val a = ChitMath.analyse(chit, bids, win)
+    val value = ChitMath.chitValue(chit)
+    val bid = ChitMath.bidFor(bids, win)
+    val commission = ChitMath.commission(value, chit.commissionPercent)
+    val pctOfReceived = if (a.prize > 0) abs(a.net) / a.prize * 100 else 0.0
+    val verdict = if (a.net >= 0) "Gain" else "Loss (interest paid)"
+    val lines = mutableListOf(
+        "Chit taken in month $win",
+        "Amount received: ${money(a.prize)}  (${money(value)} - bid ${money(bid)} - commission ${money(commission)})",
+        "Total paid over $n months: ${money(a.totalPaid)}",
+        "$verdict: ${money(abs(a.net))} = ${pct(pctOfReceived)} of the amount received"
+    )
+    a.signedAnnualPercent?.let {
+        lines += (if (it >= 0) "Interest earned" else "Interest paid") + ": about ${pct(abs(it))} a year"
+    }
+    return lines
+}
+
 @Composable
 fun ParticipantContent(vm: ChitViewModel, chit: Chit) {
     val auctions by vm.auctions(chit.id).collectAsState(emptyList())
@@ -181,6 +207,7 @@ fun ParticipantContent(vm: ChitViewModel, chit: Chit) {
 
     val n = chit.members
     val value = ChitMath.chitValue(chit)
+    val completed = (1..n).all { it in bids && it in paidMonths }
     val remaining = if (bids.isEmpty()) n - Dates.elapsed(chit) else n - Dates.running(chit, bids.keys)
     val profits = (1..n).map { m -> bids[m]?.let { it / n } }
     val maxProfit = profits.filterNotNull().maxOrNull() ?: 0.0
@@ -215,6 +242,44 @@ fun ParticipantContent(vm: ChitViewModel, chit: Chit) {
                     }
                     InfoLine("Started", chit.startMillis?.let { Dates.format(it) } ?: "—")
                     InfoLine("Remaining months", "$remaining of $n")
+                }
+            }
+        }
+
+        if (chit.myWonMonth != null) {
+            item {
+                val win = chit.myWonMonth!!
+                val a = ChitMath.analyse(chit, bids, win)
+                val value = ChitMath.chitValue(chit)
+                val bid = ChitMath.bidFor(bids, win)
+                val commission = ChitMath.commission(value, chit.commissionPercent)
+                val pctOfReceived = if (a.prize > 0) abs(a.net) / a.prize * 100 else 0.0
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            if (completed) "Chit completed ✓" else "Your result so far",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        InfoLine("Chit taken in month", "$win")
+                        InfoLine("Amount received", money(a.prize))
+                        Text(
+                            "${money(value)} − bid ${money(bid)} − commission ${money(commission)}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        InfoLine("Total paid (all $n months)", money(a.totalPaid))
+                        HorizontalDivider(Modifier.padding(vertical = 2.dp))
+                        Text(
+                            if (a.net >= 0) "Gain ${money(a.net)} (${pct(pctOfReceived)})"
+                            else "Loss ${money(-a.net)} (${pct(pctOfReceived)})",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = if (a.net >= 0) Green else Red
+                        )
+                        Text(
+                            "Percent is of the amount you received." +
+                                if (bids.size < n) " Estimate: months without a bid reuse the last known bid." else "",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
@@ -262,11 +327,12 @@ fun ParticipantContent(vm: ChitViewModel, chit: Chit) {
                             "Date: ${Dates.format(Dates.todayUtc())}"
                         ),
                         rows,
-                        listOf("Paid so far: ${money(paidTotal)}", "Pending: ${money(dueTotal - paidTotal)}")
+                        listOf("Paid so far: ${money(paidTotal)}", "Pending: ${money(dueTotal - paidTotal)}") +
+                            (resultLines(chit, bids) ?: emptyList())
                     )
                     PdfStatement.share(ctx, f, "${chit.name} statement")
                 }
-            ) { Text("Share PDF statement") }
+            ) { Text(if (completed) "Final PDF statement" else "Share PDF statement") }
         }
 
         item {
@@ -378,6 +444,12 @@ private fun InterestSection(chit: Chit, bids: Map<Int, Double>, onHide: () -> Un
                     style = MaterialTheme.typography.titleLarge,
                     color = if (s >= 0) Green else Red
                 )
+                val monthly = (Math.pow(1 + abs(s) / 100.0, 1.0 / 12.0) - 1) * 100
+                Text(
+                    "That is about ${pct(monthly)} every month (the monthly rate, compounded over 12 months).",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Spacer(Modifier.height(6.dp))
                 Text("Total you pay over $n months: ${money(result.totalPaid)}")
                 Text("Amount you receive: ${money(result.prize)}")
                 Text(
@@ -393,7 +465,20 @@ private fun InterestSection(chit: Chit, bids: Map<Int, Double>, onHide: () -> Un
             Text("Yearly interest by winning month", style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(6.dp))
             RateChart(curve, chit.myWonMonth)
-            Text("Green: you earn interest. Red: you pay interest.", style = MaterialTheme.typography.bodySmall)
+            Text(
+                "Green: you earn interest. Red: you pay interest. No bar: no single rate fits that month.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.height(10.dp))
+            Text("How this is worked out", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "1. Every month you pay the monthly amount minus your share of that month's bid.\n" +
+                    "2. In the month you take the chit you receive: total value − your bid − commission.\n" +
+                    "3. We find the one monthly rate at which everything you pay, valued at that rate, equals what you receive. Banks call this the IRR.\n" +
+                    "4. Yearly rate = (1 + monthly rate)^12 − 1.\n" +
+                    "A pay rate means taking the money early costs you; an earn rate means you gain by waiting.",
+                style = MaterialTheme.typography.bodySmall
+            )
             TextButton(onClick = onHide) { Text("Hide yearly interest") }
         }
     }

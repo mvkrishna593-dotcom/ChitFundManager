@@ -21,6 +21,8 @@ import com.chitfund.app.ui.ChitScreen
 import com.chitfund.app.ui.HelpScreen
 import com.chitfund.app.ui.HomeScreen
 import com.chitfund.app.ui.LockScreen
+import com.chitfund.app.ui.ManagerChitForm
+import com.chitfund.app.ui.MemberChitForm
 import com.chitfund.app.ui.NewChitScreen
 import com.chitfund.app.ui.PinSetupScreen
 import com.chitfund.app.ui.ProfileScreen
@@ -120,6 +122,17 @@ class MainActivity : FragmentActivity() {
                         composable("new/{role}") {
                             NewChitScreen(vm, it.arguments?.getString("role") ?: "ORGANISER") {
                                 nav.popBackStack()
+                            }
+                        }
+                        composable("edit/{id}") {
+                            val id = it.arguments?.getString("id")?.toLong() ?: 0L
+                            val chit by vm.chit(id).collectAsState(null)
+                            chit?.let { c ->
+                                if (c.role == "ORGANISER") {
+                                    ManagerChitForm(vm, { nav.popBackStack() }, c)
+                                } else {
+                                    MemberChitForm(vm, { nav.popBackStack() }, c)
+                                }
                             }
                         }
                         composable("chit/{id}") {

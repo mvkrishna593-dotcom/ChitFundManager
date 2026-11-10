@@ -39,7 +39,7 @@ object PdfStatement {
         val body = Paint().apply { textSize = 12f; color = Color.BLACK }
         val bold = Paint(body).apply { typeface = Typeface.DEFAULT_BOLD }
         val rule = Paint().apply { color = Color.LTGRAY; strokeWidth = 1f }
-        val cols = floatArrayOf(40f, 95f, 190f, 290f, 400f)
+        val cols = floatArrayOf(40f, 108f, 210f, 310f, 410f)
 
         val doc = PdfDocument()
         var pageNo = 0

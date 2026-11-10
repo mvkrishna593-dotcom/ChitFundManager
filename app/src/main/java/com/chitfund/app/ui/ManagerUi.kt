@@ -23,13 +23,16 @@ import com.chitfund.app.*
 /** Form the manager fills to create a chit he runs. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ManagerChitForm(vm: ChitViewModel, onDone: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var monthly by remember { mutableStateOf("") }
-    var count by remember { mutableStateOf("") }
-    var total by remember { mutableStateOf("") }
-    var comm by remember { mutableStateOf("5") }
-    var start by remember { mutableStateOf<Long?>(null) }
+fun ManagerChitForm(vm: ChitViewModel, onDone: () -> Unit, existing: Chit? = null) {
+    fun save(c: Chit) {
+        if (existing != null) vm.updateChit(c.copy(id = existing.id, myWonMonth = existing.myWonMonth)) else save(c)
+    }
+    var name by remember { mutableStateOf(existing?.name ?: "") }
+    var monthly by remember { mutableStateOf(existing?.let { numText(it.monthlyAmount) } ?: "") }
+    var count by remember { mutableStateOf(existing?.members?.toString() ?: "") }
+    var total by remember { mutableStateOf(existing?.let { numText(it.monthlyAmount * it.members) } ?: "") }
+    var comm by remember { mutableStateOf(existing?.let { numText(it.commissionPercent) } ?: "5") }
+    var start by remember { mutableStateOf(existing?.startMillis) }
     var pick by remember { mutableStateOf(false) }
 
     val amt = monthly.toDoubleOrNull()
@@ -44,7 +47,7 @@ fun ManagerChitForm(vm: ChitViewModel, onDone: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("New chit", fontWeight = FontWeight.Bold) },
+                title = { Text(if (existing != null) "Edit chit" else "New chit", fontWeight = FontWeight.Bold) },
                 navigationIcon = { BackIcon(onDone) },
                 colors = headerColors()
             )
@@ -79,7 +82,7 @@ fun ManagerChitForm(vm: ChitViewModel, onDone: () -> Unit) {
                 enabled = valid,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    vm.addChit(
+                    save(
                         Chit(
                             name = name.trim(), role = "ORGANISER", members = m!!,
                             monthlyAmount = amt!!, commissionPercent = cp!!,
@@ -89,7 +92,7 @@ fun ManagerChitForm(vm: ChitViewModel, onDone: () -> Unit) {
                     )
                     onDone()
                 }
-            ) { Text("Save chit") }
+            ) { Text(if (existing != null) "Save changes" else "Save chit") }
             Text("Next, open the chit and add your members.", style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -98,7 +101,8 @@ fun ManagerChitForm(vm: ChitViewModel, onDone: () -> Unit) {
 
 /** Manager's Home card: this month's collection and the commission earned. */
 @Composable
-fun ManagerChitCard(vm: ChitViewModel, c: Chit, onClick: () -> Unit) {
+fun ManagerChitCard(vm: ChitViewModel, c: Chit, onClick: () -> Unit, onEdit: () -> Unit) {
+    var confirm by remember { mutableStateOf(false) }
     val members by vm.members(c.id).collectAsState(emptyList())
     val auctions by vm.auctions(c.id).collectAsState(emptyList())
     val payments by vm.payments(c.id).collectAsState(emptyList())
@@ -108,9 +112,13 @@ fun ManagerChitCard(vm: ChitViewModel, c: Chit, onClick: () -> Unit) {
     val paidCount = payments.count { it.monthNo == month && it.paid && members.any { m -> m.id == it.memberId } }
     val commission = ChitMath.commission(ChitMath.chitValue(c), c.commissionPercent) * auctions.size
 
+    DeleteHost(confirm, c.name, { confirm = false; vm.deleteChit(c.id) }, { confirm = false })
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(c.name, style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(c.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                CardActions(onEdit) { confirm = true }
+            }
             Text(
                 "Month $month/${c.members} · ${members.size}/${c.members} members · ${money(ChitMath.chitValue(c))}",
                 style = MaterialTheme.typography.bodySmall
@@ -136,6 +144,11 @@ fun ManagerChitCard(vm: ChitViewModel, c: Chit, onClick: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun DeleteHost(show: Boolean, name: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    if (show) ConfirmDeleteDialog(name, onConfirm, onDismiss)
 }
 
 private fun openWhatsApp(ctx: Context, phone: String, text: String) {

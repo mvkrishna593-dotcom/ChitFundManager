@@ -17,18 +17,21 @@ import com.chitfund.app.Dates
 /** Form a member fills to add a chit he has joined. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MemberChitForm(vm: ChitViewModel, onDone: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var organiser by remember { mutableStateOf("") }
-    var mobile by remember { mutableStateOf("") }
-    var place by remember { mutableStateOf("") }
-    var total by remember { mutableStateOf("") }
-    var monthly by remember { mutableStateOf("") }
-    var months by remember { mutableStateOf("") }
-    var comm by remember { mutableStateOf("5") }
-    var start by remember { mutableStateOf<Long?>(null) }
-    var end by remember { mutableStateOf<Long?>(null) }
-    var endEdited by remember { mutableStateOf(false) }
+fun MemberChitForm(vm: ChitViewModel, onDone: () -> Unit, existing: Chit? = null) {
+    fun save(c: Chit) {
+        if (existing != null) vm.updateChit(c.copy(id = existing.id, myWonMonth = existing.myWonMonth)) else save(c)
+    }
+    var name by remember { mutableStateOf(existing?.name ?: "") }
+    var organiser by remember { mutableStateOf(existing?.organiserName ?: "") }
+    var mobile by remember { mutableStateOf(existing?.organiserMobile ?: "") }
+    var place by remember { mutableStateOf(existing?.place ?: "") }
+    var total by remember { mutableStateOf(existing?.let { numText(it.monthlyAmount * it.members) } ?: "") }
+    var monthly by remember { mutableStateOf(existing?.let { numText(it.monthlyAmount) } ?: "") }
+    var months by remember { mutableStateOf(existing?.members?.toString() ?: "") }
+    var comm by remember { mutableStateOf(existing?.let { numText(it.commissionPercent) } ?: "5") }
+    var start by remember { mutableStateOf(existing?.startMillis) }
+    var end by remember { mutableStateOf(existing?.endMillis) }
+    var endEdited by remember { mutableStateOf(existing != null) }
     var picking by remember { mutableStateOf<String?>(null) }
 
     val amt = monthly.toDoubleOrNull()
@@ -54,7 +57,7 @@ fun MemberChitForm(vm: ChitViewModel, onDone: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Add chit", fontWeight = FontWeight.Bold) },
+                title = { Text(if (existing != null) "Edit chit" else "Add chit", fontWeight = FontWeight.Bold) },
                 navigationIcon = { BackIcon(onDone) },
                 colors = headerColors()
             )
@@ -109,7 +112,7 @@ fun MemberChitForm(vm: ChitViewModel, onDone: () -> Unit) {
                 enabled = valid,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    vm.addChit(
+                    save(
                         Chit(
                             name = name.trim(), role = "PARTICIPANT", members = m!!,
                             monthlyAmount = amt!!, commissionPercent = cp!!,
@@ -119,7 +122,7 @@ fun MemberChitForm(vm: ChitViewModel, onDone: () -> Unit) {
                     )
                     onDone()
                 }
-            ) { Text("Save chit") }
+            ) { Text(if (existing != null) "Save changes" else "Save chit") }
         }
     }
 

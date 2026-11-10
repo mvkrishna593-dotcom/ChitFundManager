@@ -254,13 +254,13 @@ fun HomeScreen(
                     if (chits.isEmpty()) {
                         EmptyState(isManager = tab == 0) { onNew(role) }
                     } else if (tab == 1) {
-                        MemberHome(vm, chits, onOpen)
+                        MemberHome(vm, chits, onOpen) { onNavigate("edit/$it") }
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(chits, key = { it.id }) { c -> ManagerChitCard(vm, c) { onOpen(c.id) } }
+                            items(chits, key = { it.id }) { c -> ManagerChitCard(vm, c, { onOpen(c.id) }, { onNavigate("edit/${c.id}") }) }
                         }
                     }
                 }

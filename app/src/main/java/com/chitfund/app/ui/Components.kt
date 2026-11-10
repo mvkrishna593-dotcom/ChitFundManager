@@ -10,6 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardColors
@@ -121,3 +126,26 @@ fun Card(
     colors: CardColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     content: @Composable ColumnScope.() -> Unit
 ) = androidx.compose.material3.Card(modifier = modifier, colors = colors, content = content)
+
+/** Whole numbers without ".0". */
+fun numText(d: Double): String = if (d % 1.0 == 0.0) d.toLong().toString() else d.toString()
+
+/** Edit and delete icons shown on a card. */
+@Composable
+fun CardActions(onEdit: () -> Unit, onDelete: () -> Unit) {
+    Row {
+        IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, "Edit") }
+        IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, "Delete") }
+    }
+}
+
+@Composable
+fun ConfirmDeleteDialog(name: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete $name?") },
+        text = { Text("All its data on this phone will be removed. This cannot be undone.") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Delete") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
