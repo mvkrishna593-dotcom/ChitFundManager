@@ -33,7 +33,13 @@ data class Chit(
     @ColumnInfo(defaultValue = "''") val place: String = "",
     /** Start and end dates as UTC milliseconds (from the date picker). */
     val startMillis: Long? = null,
-    val endMillis: Long? = null
+    val endMillis: Long? = null,
+    /** "STANDARD" (auction, variable) or "FRIENDSHIP" (fixed order, monthly interest). */
+    @ColumnInfo(defaultValue = "'STANDARD'") val kind: String = "STANDARD",
+    /** Friendship chit: rupees of interest per Rs 100 of capital per month (1, 2, 3 ...). */
+    @ColumnInfo(defaultValue = "0") val interestRate: Double = 0.0,
+    /** Friendship chit: fixed commission in rupees each month. */
+    @ColumnInfo(defaultValue = "0") val commissionAmount: Double = 0.0
 )
 
 @Entity
@@ -155,7 +161,7 @@ abstract class ChitDao {
 
 @Database(
     entities = [Chit::class, Member::class, Auction::class, Payment::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDb : RoomDatabase() {
@@ -163,6 +169,14 @@ abstract class AppDb : RoomDatabase() {
 
     companion object {
         @Volatile private var inst: AppDb? = null
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE Chit ADD COLUMN kind TEXT NOT NULL DEFAULT 'STANDARD'")
+                db.execSQL("ALTER TABLE Chit ADD COLUMN interestRate REAL NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE Chit ADD COLUMN commissionAmount REAL NOT NULL DEFAULT 0")
+            }
+        }
 
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -183,7 +197,7 @@ abstract class AppDb : RoomDatabase() {
 
         fun get(ctx: Context): AppDb = inst ?: synchronized(this) {
             inst ?: Room.databaseBuilder(ctx.applicationContext, AppDb::class.java, "chit.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build().also { inst = it }
         }
     }

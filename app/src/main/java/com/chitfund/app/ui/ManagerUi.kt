@@ -110,7 +110,13 @@ fun ManagerChitCard(vm: ChitViewModel, c: Chit, onClick: () -> Unit, onEdit: () 
     val bid = auctions.find { it.monthNo == month }?.bid
     val due = bid?.let { ChitMath.installment(c.monthlyAmount, c.members, it) }
     val paidCount = payments.count { it.monthNo == month && it.paid && members.any { m -> m.id == it.memberId } }
-    val commission = ChitMath.commission(ChitMath.chitValue(c), c.commissionPercent) * auctions.size
+    val isF = isFriendship(c)
+    val takes = takeMonths(auctions)
+    val paidIds = payments.filter { it.monthNo == month && it.paid }.map { it.memberId }.toSet()
+    val fCollected = members.filter { it.id in paidIds }.sumOf { FriendMath.due(c, month, takes[it.id]) }
+    val fPending = members.filter { it.id !in paidIds }.sumOf { FriendMath.due(c, month, takes[it.id]) }
+    val commission = if (isF) c.commissionAmount * auctions.size
+    else ChitMath.commission(ChitMath.chitValue(c), c.commissionPercent) * auctions.size
 
     DeleteHost(confirm, c.name, { confirm = false; vm.deleteChit(c.id) }, { confirm = false })
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
@@ -120,21 +126,22 @@ fun ManagerChitCard(vm: ChitViewModel, c: Chit, onClick: () -> Unit, onEdit: () 
                 CardActions(onEdit) { confirm = true }
             }
             Text(
-                "Month $month/${c.members} · ${members.size}/${c.members} members · ${money(ChitMath.chitValue(c))}",
+                (if (isF) "Friendship · " else "") +
+                    "Month $month/${c.members} · ${members.size}/${c.members} members · ${money(ChitMath.chitValue(c))}",
                 style = MaterialTheme.typography.bodySmall
             )
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
-            if (due == null) {
+            if (!isF && due == null) {
                 Text("Auction for month $month not entered yet")
             } else {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                     Column {
                         Text("Collected", style = MaterialTheme.typography.bodySmall)
-                        Text(money(paidCount * due), fontWeight = FontWeight.Bold)
+                        Text(money(if (isF) fCollected else paidCount * (due ?: 0.0)), fontWeight = FontWeight.Bold)
                     }
                     Column {
                         Text("Pending", style = MaterialTheme.typography.bodySmall)
-                        Text(money((members.size - paidCount).coerceAtLeast(0) * due), fontWeight = FontWeight.Bold)
+                        Text(money(if (isF) fPending else (members.size - paidCount).coerceAtLeast(0) * (due ?: 0.0)), fontWeight = FontWeight.Bold)
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text("Commission earned", style = MaterialTheme.typography.bodySmall)
@@ -151,7 +158,7 @@ private fun DeleteHost(show: Boolean, name: String, onConfirm: () -> Unit, onDis
     if (show) ConfirmDeleteDialog(name, onConfirm, onDismiss)
 }
 
-private fun openWhatsApp(ctx: Context, phone: String, text: String) {
+fun openWhatsApp(ctx: Context, phone: String, text: String) {
     val digits = phone.filter { it.isDigit() }
     val number = if (digits.length == 10) "91$digits" else digits
     val uri = Uri.parse("https://wa.me/$number?text=" + Uri.encode(text))
@@ -165,6 +172,10 @@ private fun openWhatsApp(ctx: Context, phone: String, text: String) {
 /** Send the amount-to-pay message to each member on WhatsApp, one tap each. */
 @Composable
 fun MessagesTab(chit: Chit, members: List<Member>, auctions: List<Auction>, payments: List<Payment>) {
+    if (isFriendship(chit)) {
+        FriendMessagesTab(chit, members, auctions, payments)
+        return
+    }
     val ctx = LocalContext.current
     var month by rememberSaveable { mutableIntStateOf(Dates.running(chit, auctions.map { it.monthNo })) }
     var unpaidOnly by rememberSaveable { mutableStateOf(false) }

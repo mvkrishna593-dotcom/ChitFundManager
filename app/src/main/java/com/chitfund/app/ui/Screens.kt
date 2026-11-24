@@ -42,7 +42,11 @@ fun NumField(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewChitScreen(vm: ChitViewModel, role: String, onDone: () -> Unit) {
+fun NewChitScreen(vm: ChitViewModel, role: String, kind: String, onDone: () -> Unit) {
+    if (kind == "FRIENDSHIP") {
+        FriendshipChitForm(vm, role, onDone)
+        return
+    }
     if (role == "PARTICIPANT") {
         MemberChitForm(vm, onDone)
         return

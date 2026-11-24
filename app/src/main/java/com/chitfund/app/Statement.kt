@@ -30,7 +30,8 @@ object PdfStatement {
         heading: String,
         lines: List<String>,
         rows: List<StatementRow>,
-        footer: List<String>
+        footer: List<String>,
+        bidHeader: String = "Bid"
     ): File {
         val dir = File(ctx.cacheDir, "statements").apply { mkdirs() }
         val file = File(dir, fileName.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".pdf")
@@ -59,7 +60,7 @@ object PdfStatement {
                 y += 8f
             }
             val c = canvas!!
-            val heads = listOf("Month", "Date", "Bid", "Amount", "Status")
+            val heads = listOf("Month", "Date", bidHeader, "Amount", "Status")
             heads.forEachIndexed { i, t -> c.drawText(t, cols[i], y, bold) }
             y += 6f
             c.drawLine(M, y, W - M, y, rule)

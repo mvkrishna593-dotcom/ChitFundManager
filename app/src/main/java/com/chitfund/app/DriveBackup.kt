@@ -148,7 +148,7 @@ class BackupViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun snapshot(): String {
-        val root = JSONObject().put("app", "chitfund").put("version", 3)
+        val root = JSONObject().put("app", "chitfund").put("version", 4)
         root.put("chits", JSONArray().also { a ->
             dao.allChits().forEach { c ->
                 a.put(JSONObject().apply {
@@ -159,6 +159,8 @@ class BackupViewModel(app: Application) : AndroidViewModel(app) {
                     put("place", c.place)
                     c.startMillis?.let { put("startMillis", it) }
                     c.endMillis?.let { put("endMillis", it) }
+                    put("kind", c.kind); put("interestRate", c.interestRate)
+                    put("commissionAmount", c.commissionAmount)
                 })
             }
         })
@@ -200,7 +202,10 @@ class BackupViewModel(app: Application) : AndroidViewModel(app) {
                     commissionPercent = o.getDouble("commissionPercent"), myWonMonth = o.intOrNull("myWonMonth"),
                     organiserName = o.optString("organiserName"), organiserMobile = o.optString("organiserMobile"),
                     place = o.optString("place"), startMillis = o.longOrNull("startMillis"),
-                    endMillis = o.longOrNull("endMillis")
+                    endMillis = o.longOrNull("endMillis"),
+                    kind = o.optString("kind", "STANDARD"),
+                    interestRate = o.optDouble("interestRate", 0.0),
+                    commissionAmount = o.optDouble("commissionAmount", 0.0)
                 )
             }
         }

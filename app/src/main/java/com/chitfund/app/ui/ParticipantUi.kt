@@ -32,7 +32,7 @@ private val Green = Color(0xFF2E7D32)
 private val Red = Color(0xFFC62828)
 
 /** Status of one month for the member: Paid, Due, Bid pending or Upcoming. */
-private fun statusOf(chit: Chit, month: Int, hasBid: Boolean, paid: Boolean): String = when {
+fun statusOf(chit: Chit, month: Int, hasBid: Boolean, paid: Boolean): String = when {
     paid -> "Paid"
     !hasBid -> "Bid pending"
     chit.startMillis != null && Dates.elapsed(chit) >= month -> "Due"
@@ -40,7 +40,7 @@ private fun statusOf(chit: Chit, month: Int, hasBid: Boolean, paid: Boolean): St
 }
 
 @Composable
-private fun StatusPill(status: String, onDark: Boolean = false) {
+fun StatusPill(status: String, onDark: Boolean = false) {
     val (bg, fg) = when (status) {
         "Paid" -> Color(0xFFD8F3DC) to Color(0xFF14532D)
         "Due" -> Color(0xFFFFE0B2) to Color(0xFF8A4B00)
@@ -105,7 +105,10 @@ fun MemberHome(vm: ChitViewModel, chits: List<Chit>, onOpen: (Long) -> Unit, onE
             Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clickable { onOpen(c.id) }) {
                 Row(Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Chit $no · ${c.name}", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Chit $no · ${c.name}" + if (isFriendship(c)) " (Friendship)" else "",
+                            style = MaterialTheme.typography.titleMedium
+                        )
                         Text(
                             "${money(c.members * c.monthlyAmount)} · ${money(c.monthlyAmount)}/month · ${c.members} months",
                             style = MaterialTheme.typography.bodyMedium
@@ -131,10 +134,12 @@ fun MemberHome(vm: ChitViewModel, chits: List<Chit>, onOpen: (Long) -> Unit, onE
 private fun ChitSlide(vm: ChitViewModel, c: Chit, number: Int, onClick: () -> Unit) {
     val auctions by vm.auctions(c.id).collectAsState(emptyList())
     val payments by vm.payments(c.id).collectAsState(emptyList())
-    val month = Dates.running(c, auctions.map { it.monthNo })
-    val bid = auctions.find { it.monthNo == month }?.bid
+    val isF = isFriendship(c)
+    val month = if (isF) Dates.currentMonth(c) else Dates.running(c, auctions.map { it.monthNo })
+    val bid = if (isF) FriendMath.pot(c, month) else auctions.find { it.monthNo == month }?.bid
     val paid = payments.any { it.monthNo == month && it.paid }
-    val pay = bid?.let { ChitMath.installment(c.monthlyAmount, c.members, it) }
+    val pay = if (isF) FriendMath.due(c, month, c.myWonMonth)
+    else bid?.let { ChitMath.installment(c.monthlyAmount, c.members, it) }
     val status = statusOf(c, month, bid != null, paid)
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val ink = if (dark) Color.White else Color(0xFF0F3D28)
@@ -153,7 +158,7 @@ private fun ChitSlide(vm: ChitViewModel, c: Chit, number: Int, onClick: () -> Un
             Text("$dateText  ·  ${c.name}", color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Text("Month $month/${c.members}", color = ink.copy(alpha = 0.85f), fontSize = 12.sp)
             Spacer(Modifier.height(10.dp))
-            Text("Bid amount", color = ink.copy(alpha = 0.75f), fontSize = 12.sp)
+            Text(if (isF) "Chit pot this month" else "Bid amount", color = ink.copy(alpha = 0.75f), fontSize = 12.sp)
             Text(
                 bid?.let { money(it) } ?: "Not entered",
                 color = ink, fontSize = 22.sp, fontWeight = FontWeight.Bold
@@ -196,6 +201,10 @@ private fun resultLines(chit: Chit, bids: Map<Int, Double>): List<String>? {
 
 @Composable
 fun ParticipantContent(vm: ChitViewModel, chit: Chit) {
+    if (isFriendship(chit)) {
+        FriendshipMemberContent(vm, chit)
+        return
+    }
     val auctions by vm.auctions(chit.id).collectAsState(emptyList())
     val payments by vm.payments(chit.id).collectAsState(emptyList())
     val bids = auctions.associate { it.monthNo to it.bid }
@@ -407,7 +416,7 @@ fun ParticipantContent(vm: ChitViewModel, chit: Chit) {
 }
 
 @Composable
-private fun InfoLine(label: String, value: String) {
+fun InfoLine(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End)
@@ -526,7 +535,7 @@ private fun MonthDialog(
 }
 
 @Composable
-private fun WinDialog(current: Int?, max: Int, onDismiss: () -> Unit, onSave: (Int?) -> Unit) {
+fun WinDialog(current: Int?, max: Int, onDismiss: () -> Unit, onSave: (Int?) -> Unit) {
     var v by remember { mutableStateOf(current?.toString() ?: "") }
     val parsed = v.toIntOrNull()
     AlertDialog(
@@ -581,7 +590,7 @@ private fun ProfitChart(profits: List<Double?>, maxProfit: Double) {
 }
 
 @Composable
-private fun RateChart(values: List<Double?>, highlight: Int?) {
+fun RateChart(values: List<Double?>, highlight: Int?) {
     val maxAbs = values.filterNotNull().maxOfOrNull { abs(it) }?.takeIf { it > 0 } ?: 1.0
     Canvas(Modifier.fillMaxWidth().height(160.dp)) {
         val n = values.size

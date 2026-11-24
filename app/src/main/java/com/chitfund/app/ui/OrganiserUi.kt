@@ -23,10 +23,11 @@ fun OrganiserContent(vm: ChitViewModel, chit: Chit) {
     val payments by vm.payments(chit.id).collectAsState(emptyList())
 
     Column {
-        PillTabs(listOf("Members", "Auctions", "Payments", "Messages"), tab) { tab = it }
+        val friendship = isFriendship(chit)
+        PillTabs(listOf("Members", if (friendship) "Schedule" else "Auctions", "Payments", "Messages"), tab) { tab = it }
         when (tab) {
             0 -> MembersTab(vm, chit, members, auctions, payments)
-            1 -> AuctionsTab(vm, chit, members, auctions)
+            1 -> if (friendship) FriendScheduleTab(vm, chit, members, auctions) else AuctionsTab(vm, chit, members, auctions)
             2 -> PaymentsTab(vm, chit, members, auctions, payments)
             else -> MessagesTab(chit, members, auctions, payments)
         }
@@ -58,12 +59,14 @@ private fun MembersTab(
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(m.name, fontWeight = FontWeight.Medium)
-                        val sub = listOf(m.phone, m.place).filter { it.isNotBlank() }.joinToString(" · ")
+                        val takeText = if (isFriendship(chit)) takeMonths(auctions)[m.id]?.let { "Takes in month $it" } ?: "" else ""
+                        val sub = listOf(m.phone, m.place, takeText).filter { it.isNotBlank() }.joinToString(" · ")
                         if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall)
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         TextButton(onClick = {
-                            val f = memberStatement(ctx, chit, m, auctions, payments)
+                            val f = if (isFriendship(chit)) friendMemberStatement(ctx, chit, m, auctions, payments)
+                            else memberStatement(ctx, chit, m, auctions, payments)
                             PdfStatement.share(ctx, f, "${chit.name} statement - ${m.name}")
                         }) { Text("Statement") }
                         TextButton(onClick = { vm.removeMember(m) }) { Text("Remove") }
@@ -233,10 +236,15 @@ private fun PaymentsTab(
     var month by rememberSaveable { mutableIntStateOf(1) }
     val auction = auctions.find { it.monthNo == month }
     val due = ChitMath.installment(chit.monthlyAmount, chit.members, auction?.bid ?: 0.0)
+    val friendship = isFriendship(chit)
+    val takes = takeMonths(auctions)
+    fun dueOf(m: Member) = if (friendship) FriendMath.due(chit, month, takes[m.id]) else due
     val paidSet = payments.filter { it.monthNo == month && it.paid }.map { it.memberId }.toSet()
     val paidDates = payments.filter { it.monthNo == month && it.paid }.associate { it.memberId to it.paidMillis }
     var datingFor by remember { mutableStateOf<Member?>(null) }
     val paidCount = members.count { it.id in paidSet }
+    val collected = members.filter { it.id in paidSet }.sumOf { dueOf(it) }
+    val pending = members.filter { it.id !in paidSet }.sumOf { dueOf(it) }
 
     Column(Modifier.padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -244,15 +252,19 @@ private fun PaymentsTab(
             Text("Month $month", style = MaterialTheme.typography.titleMedium)
             TextButton(enabled = month < chit.members, onClick = { month++ }) { Text("Next ▶") }
         }
-        if (auction == null) {
+        if (!friendship && auction == null) {
             Text(
                 "This month's auction isn't entered yet, so the full ${money(chit.monthlyAmount)} per member is shown.",
                 style = MaterialTheme.typography.bodySmall
             )
         }
         Spacer(Modifier.height(8.dp))
-        Text("Each member pays ${money(due)}", fontWeight = FontWeight.Medium)
-        Text("Collected ${money(paidCount * due)} · Pending ${money((members.size - paidCount) * due)}")
+        if (friendship) {
+            Text("Pot ${money(FriendMath.pot(chit, month))}", fontWeight = FontWeight.Medium)
+        } else {
+            Text("Each member pays ${money(due)}", fontWeight = FontWeight.Medium)
+        }
+        Text("Collected ${money(collected)} · Pending ${money(pending)}")
         Spacer(Modifier.height(8.dp))
         LazyColumn {
             items(members, key = { it.id }) { m ->
@@ -268,7 +280,7 @@ private fun PaymentsTab(
                         onCheckedChange = { if (paid) vm.setPaid(chit.id, m.id, month, false) else datingFor = m }
                     )
                     Column {
-                        Text(m.name)
+                        Text(m.name + if (friendship) " · ${money(dueOf(m))}" else "")
                         paidDates[m.id]?.let {
                             Text("Paid on ${Dates.format(it)}", style = MaterialTheme.typography.bodySmall)
                         }

@@ -45,6 +45,9 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
@@ -90,6 +93,7 @@ fun HomeScreen(
     onToggleTheme: () -> Unit
 ) {
     val ctx = LocalContext.current
+    var picking by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val profile by profileVm.profile.collectAsState()
@@ -106,6 +110,9 @@ fun HomeScreen(
     val chits by remember(role) { vm.chits(role) }.collectAsState(emptyList())
 
     var manualCheck by remember { mutableIntStateOf(0) }
+    picking?.let { r ->
+        ChitTypeDialog({ picking = null }) { kind -> picking = null; onNew("$r/$kind") }
+    }
     UpdateHost(manualCheck)
 
     val versionLabel = remember {
@@ -239,7 +246,7 @@ fun HomeScreen(
             floatingActionButton = {
                 if (tab >= 0 && chits.isNotEmpty()) {
                     ExtendedFloatingActionButton(
-                        onClick = { onNew(role) },
+                        onClick = { picking = role },
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ) {
@@ -252,7 +259,7 @@ fun HomeScreen(
                 if (tab >= 0) {
                     PillTabs(listOf("Manager", "Member"), tab) { tab = it }
                     if (chits.isEmpty()) {
-                        EmptyState(isManager = tab == 0) { onNew(role) }
+                        EmptyState(isManager = tab == 0) { picking = role }
                     } else if (tab == 1) {
                         MemberHome(vm, chits, onOpen) { onNavigate("edit/$it") }
                     } else {
@@ -344,4 +351,30 @@ private fun EmptyState(isManager: Boolean, onCreate: () -> Unit) {
             Button(onClick = onCreate) { Text(if (isManager) "Create my first chit" else "Add my first chit") }
         }
     }
+}
+
+@Composable
+private fun ChitTypeDialog(onDismiss: () -> Unit, onPick: (String) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Which type of chit?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = { onPick("STANDARD") }, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text("Standard / Variable chit", fontWeight = FontWeight.Bold)
+                        Text("Monthly auction. The bid lowers what members pay.", fontSize = 12.sp)
+                    }
+                }
+                OutlinedButton(onClick = { onPick("FRIENDSHIP") }, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text("Friendship chit", fontWeight = FontWeight.Bold)
+                        Text("No bid. Fixed order; whoever has taken the chit pays monthly interest.", fontSize = 12.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }

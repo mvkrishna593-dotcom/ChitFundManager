@@ -36,6 +36,10 @@ object ChitMath {
         return 0.0
     }
 
+    /** Yearly rate (percent, compounded) from monthly cash flows, or null if no single rate fits. */
+    fun yearlyFromFlows(f: DoubleArray): Double? =
+        irr(f)?.let { ((1 + it).pow(12.0) - 1) * 100 }
+
     fun analyse(c: Chit, bids: Map<Int, Double>, win: Int): Analysis {
         val n = c.members
         val value = chitValue(c)
@@ -89,5 +93,36 @@ object ChitMath {
         val up = root(0.0005, 1.0)
         val down = root(-0.0005, -0.5)
         return listOfNotNull(up, down).minByOrNull { abs(it) }
+    }
+}
+
+
+/**
+ * Friendship chit. No bids: the order is pre-decided. A member who has taken the chit pays the
+ * monthly amount plus a fixed interest (rate rupees per 100 of capital) from the month after.
+ * The pot grows by one interest payment for every earlier taker.
+ */
+object FriendMath {
+    fun capital(c: Chit) = c.members * c.monthlyAmount
+    fun interest(c: Chit) = capital(c) * c.interestRate / 100.0
+    fun pot(c: Chit, month: Int) = capital(c) + (month - 1) * interest(c)
+    fun payout(c: Chit, month: Int) = pot(c, month) - c.commissionAmount
+
+    /** What a member pays in [month]. takeMonth = the month he takes the chit (null if not yet known). */
+    fun due(c: Chit, month: Int, takeMonth: Int?): Double =
+        c.monthlyAmount + if (takeMonth != null && takeMonth < month) interest(c) else 0.0
+
+    fun analyse(c: Chit, take: Int): Analysis {
+        val n = c.members
+        val flows = DoubleArray(n) { i ->
+            val m = i + 1
+            -due(c, m, take) + if (m == take) payout(c, m) else 0.0
+        }
+        val paid = (1..n).sumOf { due(c, it, take) }
+        val prize = payout(c, take)
+        val net = prize - paid
+        val annual = ChitMath.yearlyFromFlows(flows)
+        val signed = annual?.let { if (net >= 0) abs(it) else -abs(it) }
+        return Analysis(take, paid, prize, net, annual, signed)
     }
 }

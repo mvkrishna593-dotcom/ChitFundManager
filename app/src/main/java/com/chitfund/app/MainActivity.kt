@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.chitfund.app.ui.ChitScreen
+import com.chitfund.app.ui.FriendshipChitForm
 import com.chitfund.app.ui.HelpScreen
 import com.chitfund.app.ui.HomeScreen
 import com.chitfund.app.ui.LockScreen
@@ -119,8 +120,12 @@ class MainActivity : FragmentActivity() {
                                 onDone = { nav.popBackStack() }, onBack = { nav.popBackStack() })
                         }
                         composable("help") { HelpScreen { nav.popBackStack() } }
-                        composable("new/{role}") {
-                            NewChitScreen(vm, it.arguments?.getString("role") ?: "ORGANISER") {
+                        composable("new/{role}/{kind}") {
+                            NewChitScreen(
+                                vm,
+                                it.arguments?.getString("role") ?: "ORGANISER",
+                                it.arguments?.getString("kind") ?: "STANDARD"
+                            ) {
                                 nav.popBackStack()
                             }
                         }
@@ -128,7 +133,9 @@ class MainActivity : FragmentActivity() {
                             val id = it.arguments?.getString("id")?.toLong() ?: 0L
                             val chit by vm.chit(id).collectAsState(null)
                             chit?.let { c ->
-                                if (c.role == "ORGANISER") {
+                                if (c.kind == "FRIENDSHIP") {
+                                    FriendshipChitForm(vm, c.role, { nav.popBackStack() }, c)
+                                } else if (c.role == "ORGANISER") {
                                     ManagerChitForm(vm, { nav.popBackStack() }, c)
                                 } else {
                                     MemberChitForm(vm, { nav.popBackStack() }, c)
