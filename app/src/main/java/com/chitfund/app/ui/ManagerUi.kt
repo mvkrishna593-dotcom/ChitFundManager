@@ -101,7 +101,7 @@ fun ManagerChitForm(vm: ChitViewModel, onDone: () -> Unit, existing: Chit? = nul
 
 /** Manager's Home card: this month's collection and the commission earned. */
 @Composable
-fun ManagerChitCard(vm: ChitViewModel, c: Chit, onClick: () -> Unit, onEdit: () -> Unit) {
+fun ManagerChitCard(vm: ChitViewModel, c: Chit, number: Int, onClick: () -> Unit, onEdit: () -> Unit) {
     var confirm by remember { mutableStateOf(false) }
     val members by vm.members(c.id).collectAsState(emptyList())
     val auctions by vm.auctions(c.id).collectAsState(emptyList())
@@ -117,39 +117,53 @@ fun ManagerChitCard(vm: ChitViewModel, c: Chit, onClick: () -> Unit, onEdit: () 
     val fPending = members.filter { it.id !in paidIds }.sumOf { FriendMath.due(c, month, takes[it.id]) }
     val commission = if (isF) c.commissionAmount * auctions.size
     else ChitMath.commission(ChitMath.chitValue(c), c.commissionPercent) * auctions.size
+    val known = isF || due != null
+    val collected = if (isF) fCollected else paidCount * (due ?: 0.0)
+    val pending = if (isF) fPending else (members.size - paidCount).coerceAtLeast(0) * (due ?: 0.0)
+    val startText = c.startMillis?.let { Dates.monthYY(it) } ?: "—"
+    val endText = (c.endMillis ?: c.startMillis?.let { Dates.addMonths(it, c.members - 1) })
+        ?.let { Dates.monthYY(it) } ?: "—"
 
     DeleteHost(confirm, c.name, { confirm = false; vm.deleteChit(c.id) }, { confirm = false })
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(start = 16.dp, top = 8.dp, end = 4.dp, bottom = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(c.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Column(Modifier.weight(1f)) {
+                    Text("Chit $number · ${c.name}", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        (if (isF) "Friendship chit · " else "Standard chit · ") + "$startText to $endText",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 CardActions(onEdit) { confirm = true }
             }
-            Text(
-                (if (isF) "Friendship · " else "") +
-                    "Month $month/${c.members} · ${members.size}/${c.members} members · ${money(ChitMath.chitValue(c))}",
-                style = MaterialTheme.typography.bodySmall
-            )
-            HorizontalDivider(Modifier.padding(vertical = 4.dp))
-            if (!isF && due == null) {
-                Text("Auction for month $month not entered yet")
-            } else {
+            Spacer(Modifier.height(6.dp))
+            Column(Modifier.padding(end = 12.dp)) {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                    Column {
-                        Text("Collected", style = MaterialTheme.typography.bodySmall)
-                        Text(money(if (isF) fCollected else paidCount * (due ?: 0.0)), fontWeight = FontWeight.Bold)
-                    }
-                    Column {
-                        Text("Pending", style = MaterialTheme.typography.bodySmall)
-                        Text(money(if (isF) fPending else (members.size - paidCount).coerceAtLeast(0) * (due ?: 0.0)), fontWeight = FontWeight.Bold)
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("Commission earned", style = MaterialTheme.typography.bodySmall)
-                        Text(money(commission), fontWeight = FontWeight.Bold)
-                    }
+                    CardStat("Months", "${c.members}")
+                    CardStat("Members", "${members.size}/${c.members}")
+                    CardStat("Running month", "$month/${c.members}", Alignment.End)
+                }
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    CardStat("Collected", if (known) money(collected) else "—")
+                    CardStat("Pending", if (known) money(pending) else "—")
+                    CardStat("Commission", money(commission), Alignment.End)
+                }
+                if (!known) {
+                    Spacer(Modifier.height(6.dp))
+                    Text("Auction for month $month not entered yet", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CardStat(label: String, value: String, align: Alignment.Horizontal = Alignment.Start) {
+    Column(horizontalAlignment = align) {
+        Text(label, style = MaterialTheme.typography.bodySmall)
+        Text(value, fontWeight = FontWeight.Bold)
     }
 }
 

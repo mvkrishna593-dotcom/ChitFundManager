@@ -191,13 +191,28 @@ fun FriendScheduleTab(vm: ChitViewModel, chit: Chit, members: List<Member>, auct
                     val free = members.filter { it.id !in taken }
                     if (free.isEmpty()) Text("Add members first, or every member already has a month.")
                     free.forEach { mem ->
-                        TextButton(onClick = {
-                            vm.saveAuction(
-                                Auction(id = existing?.id ?: 0, chitId = chit.id, monthNo = mo, bid = 0.0,
-                                    winnerMemberId = mem.id)
+                        val chosen = mem.id == existing?.winnerMemberId
+                        Button(
+                            onClick = {
+                                vm.saveAuction(
+                                    Auction(id = existing?.id ?: 0, chitId = chit.id, monthNo = mo, bid = 0.0,
+                                        winnerMemberId = mem.id)
+                                )
+                                editing = null
+                            },
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
+                        ) {
+                            Text(
+                                mem.name + if (chosen) "  ✓" else "",
+                                fontWeight = if (chosen) FontWeight.Bold else FontWeight.Medium,
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            editing = null
-                        }) { Text(mem.name + if (mem.id == existing?.winnerMemberId) "  ✓" else "") }
+                        }
                     }
                 }
             },

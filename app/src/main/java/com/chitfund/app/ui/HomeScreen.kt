@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Help
@@ -268,7 +269,9 @@ fun HomeScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(chits, key = { it.id }) { c -> ManagerChitCard(vm, c, { onOpen(c.id) }, { onNavigate("edit/${c.id}") }) }
+                            itemsIndexed(chits, key = { _, c -> c.id }) { i, c ->
+                                ManagerChitCard(vm, c, chits.size - i, { onOpen(c.id) }, { onNavigate("edit/${c.id}") })
+                            }
                         }
                     }
                 }

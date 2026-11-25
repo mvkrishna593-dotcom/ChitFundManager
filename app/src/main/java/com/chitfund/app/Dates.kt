@@ -17,6 +17,10 @@ object Dates {
     fun monthYear(ms: Long): String =
         SimpleDateFormat("MMM yyyy", Locale.ENGLISH).apply { timeZone = utc }.format(ms)
 
+    /** Month and 2-digit year, like Jan-26. */
+    fun monthYY(ms: Long): String =
+        SimpleDateFormat("MMM-yy", Locale.ENGLISH).apply { timeZone = utc }.format(ms)
+
     /** Same day-of-month, n months later (clamped for short months). */
     fun addMonths(ms: Long, n: Int): Long {
         val c = cal(ms)
